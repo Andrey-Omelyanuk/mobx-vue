@@ -3,7 +3,7 @@
  * @homepage https://github.com/kuitos/
  * @since 2018-05-22 16:39
  */
-import { Reaction } from 'mobx';
+import { autorun, Reaction } from 'mobx';
 import Vue, { ComponentOptions } from 'vue';
 import collectDataForVue from './collectData';
 
@@ -22,10 +22,32 @@ function observer<VC extends VueClass<Vue>>(Component: VC | ComponentOptions<Vue
 	const originalOptions = typeof Component === 'object' ? Component : (Component as any).options;
 	// To not mutate the original component options, we need to construct a new one
 	const dataDefinition = originalOptions.data;
+
+	let disposers: any = [];
+	const originalComputed: any = {};
+	const __mobx: any = {};
+	if (originalOptions.computed) {
+		for (const computedName of Object.keys(originalOptions.computed)) {
+			if (originalOptions.computed[computedName] instanceof Function) {
+				console.log(originalOptions.computed, computedName);
+				__mobx[computedName] = 0;
+				originalComputed[computedName] = originalOptions.computed[computedName];
+				originalOptions.computed[computedName] = (vm: any) => {
+					vm._data.__mobx[computedName] = vm._data.__mobx[computedName];
+					return originalComputed[computedName].call(vm, vm);
+				};
+			}
+		}
+	}
+
 	const options = {
 		...originalOptions,
 		name,
-		data: (vm: Vue) => collectDataForVue(vm, dataDefinition),
+		data: (vm: Vue) => {
+			const data = collectDataForVue(vm, dataDefinition);
+			data.__mobx = __mobx;
+			return data;
+		},
 		// overrider the cached constructor to avoid extending skip
 		// @see https://github.com/vuejs/vue/blob/6cc070063bd211229dff5108c99f7d11b6778550/src/core/global-api/extend.js#L24
 		_Ctor: {},
@@ -39,7 +61,6 @@ function observer<VC extends VueClass<Vue>>(Component: VC | ComponentOptions<Vue
 	const { $mount, $destroy } = ExtendedComponent.prototype;
 
 	ExtendedComponent.prototype.$mount = function (this: any, ...args: any[]) {
-
 		let mounted = false;
 		this[disposerSymbol] = noop;
 
@@ -61,6 +82,12 @@ function observer<VC extends VueClass<Vue>>(Component: VC | ComponentOptions<Vue
 			return this;
 		};
 
+		for (const computed of Object.keys(originalComputed)) {
+			disposers.push(autorun(() => {
+				this._data.__mobx[computed]++;
+				originalComputed[computed].call(this, this);
+			}));
+		}
 		const reaction = new Reaction(`${name}.render()`, reactiveRender);
 
 		this[disposerSymbol] = reaction.getDisposer();
@@ -69,6 +96,8 @@ function observer<VC extends VueClass<Vue>>(Component: VC | ComponentOptions<Vue
 	};
 
 	ExtendedComponent.prototype.$destroy = function (this: Vue) {
+		disposers.forEach((disposer: any) => disposer());
+		disposers = [];
 		(this as any)[disposerSymbol]();
 		$destroy.apply(this);
 	};

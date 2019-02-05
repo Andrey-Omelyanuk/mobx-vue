@@ -13,6 +13,7 @@ import ClassBase from './fixtures/ClassBase.vue';
 import Conditional from './fixtures/Conditional.vue';
 import DecoratedClassBase from './fixtures/DecoratedClassBase.vue';
 import ModelClassBase from './fixtures/ModelClassBase.vue';
+import UserComponent from './fixtures/User.vue';
 
 class Model {
 	@observable
@@ -257,4 +258,16 @@ test('mobx state should not be collect by vue', () => {
 
 	expect(vm.name).toBe('kuitos');
 	expect(vm.$data.hasOwnProperty('name')).toBeFalsy();
+});
+
+test('changes in mobx state should be trigger recompute vue computed fields', () => {
+	const wrapper = shallowMount(UserComponent);
+	const fullName = wrapper.find('#full-name');
+	const changeFirstName = wrapper.find('#change-first-name');
+	const changeNickName  = wrapper.find('#change-nick-name');
+	expect(fullName.text()).toBe('A1 B C1');
+	changeNickName.trigger('click');
+	expect(fullName.text()).toBe('A1 B C2');
+	changeFirstName.trigger('click');
+	expect(fullName.text()).toBe('A2 B C2');
 });
