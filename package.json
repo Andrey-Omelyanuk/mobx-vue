@@ -2,9 +2,9 @@
   "name": "mobx-vue",
   "version": "2.0.8",
   "description": "Vue bindings for MobX",
-  "main": "./lib/index.js",
-  "module": "./esm/index.js",
-  "types": "./esm/index.d.ts",
+  "main": "./dist/lib/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/esm/index.d.ts",
   "sideEffects": false,
   "scripts": {
     "start": "jest -o --watch --coverage false",
