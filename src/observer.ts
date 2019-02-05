@@ -29,7 +29,6 @@ function observer<VC extends VueClass<Vue>>(Component: VC | ComponentOptions<Vue
 	if (originalOptions.computed) {
 		for (const computedName of Object.keys(originalOptions.computed)) {
 			if (originalOptions.computed[computedName] instanceof Function) {
-				console.log(originalOptions.computed, computedName);
 				__mobx[computedName] = 0;
 				originalComputed[computedName] = originalOptions.computed[computedName];
 				originalOptions.computed[computedName] = (vm: any) => {
